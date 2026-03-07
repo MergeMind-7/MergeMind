@@ -40,27 +40,42 @@ const pullSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 async function updateRepoStats(repoId) {
   const Pull = mongoose.model("Pull");
 
-  const pulls = await Pull.find({ repo: repoId });
-  const totalPRs = pulls.length;
-  const openPRs = pulls.filter(p => p.state === "open").length;
-  const totalAnalyzedPRs = pulls.filter(p => p.healthScore !== undefined).length;
+  const stats = await Pull.aggregate([
+    { $match: { repo: repoId } },
+    {
+      $group: {
+        _id: null,
+        totalPRs: { $sum: 1 },
+        openPRs: {
+          $sum: { $cond: [{ $eq: ["$state", "open"] }, 1, 0] },
+        },
+        totalAnalyzedPRs: {
+          $sum: { $cond: [{ $gt: ["$healthScore", 0] }, 1, 0] },
+        },
+        avgHealthScore: { $avg: "$healthScore" },
+      },
+    },
+  ]);
 
-  const avgHealth =
-    pulls.reduce((acc, p) => acc + (p.healthScore || 0), 0) /
-    (totalAnalyzedPRs || 1);
+  const repoStats = stats[0] || {
+    totalPRs: 0,
+    openPRs: 0,
+    totalAnalyzedPRs: 0,
+    avgHealthScore: 0,
+  };
 
   await Repo.findByIdAndUpdate(repoId, {
     $set: {
-      "stats.totalPRs": totalPRs,
-      "stats.openPRs": openPRs,
-      "stats.totalAnalyzedPRs": totalAnalyzedPRs,
-      "stats.averageHealthScore": Math.round(avgHealth),
+      "stats.totalPRs": repoStats.totalPRs,
+      "stats.openPRs": repoStats.openPRs,
+      "stats.totalAnalyzedPRs": repoStats.totalAnalyzedPRs,
+      "stats.averageHealthScore": Math.round(repoStats.avgHealthScore || 0),
     },
   });
 }
@@ -69,10 +84,16 @@ pullSchema.post("save", async function () {
   await updateRepoStats(this.repo);
 });
 
-pullSchema.post("deleteOne", { document: true, query: false }, async function () {
-  await updateRepoStats(this.repo);
-});
+pullSchema.post(
+  "deleteOne",
+  { document: true, query: false },
+  async function () {
+    await updateRepoStats(this.repo);
+  },
+);
 
+pullSchema.index({ repo: 1 });
+pullSchema.index({ repo: 1, prNumber: 1 });
 
 const Pull = mongoose.model("Pull", pullSchema);
 

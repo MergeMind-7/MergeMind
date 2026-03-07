@@ -53,7 +53,7 @@ const githubWebhookController = async (req, res) => {
         ),
       };
       await Push.create(pushData);
-      repo.lastPushedAt = pushData.timestamp;
+      repo.lastPushedAt = new Date(pushData.timestamp);
       repo.lastPushedBy = pushData.user;
       await repo.save();
 
@@ -136,7 +136,7 @@ const githubWebhookController = async (req, res) => {
         await pr.save();
       }
 
-      repo.lastPrActivity = actionEntry.timestamp;
+      repo.lastPrActivity = new Date(actionEntry.timestamp);
       repo.lastPrBy = pr.user;
       await repo.save();
 

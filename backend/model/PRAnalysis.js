@@ -71,7 +71,7 @@ const prAnalysisSchema = new mongoose.Schema(
     commits: { type: Number },
     suggestions: { type: [suggestionSchema], default: [] },
     comments: { type: [commentSchema], default: [] },
-    analyzedAt: { type: String, default: () => formatToReadable(new Date()) },
+    analyzedAt: { type: Date, default: Date.now },
     files: {
       type: [fileChangeSchema],
       default: [],
@@ -81,5 +81,8 @@ const prAnalysisSchema = new mongoose.Schema(
 );
 
 const PRAnalysis = mongoose.model("PRAnalysis", prAnalysisSchema);
+
+prAnalysisSchema.index({ repo: 1 });
+
 
 module.exports = PRAnalysis;

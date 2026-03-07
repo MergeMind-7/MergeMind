@@ -389,7 +389,7 @@ ${JSON.stringify(prData, null, 2)}
         tokensUsed: actualTokens,
         modelUsed: modelUsed,
         ...parsed,
-        analyzedAt: new Date().toISOString(),
+        analyzedAt: new Date(),
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
@@ -426,7 +426,7 @@ ${JSON.stringify(prData, null, 2)}
         body: "❌ MergeMind detected critical issues that must be fixed before merge.",
       });
 
-      await redis.set(reviewCacheKey, latestCommit);
+      await redis.set(reviewCacheKey, latestCommit, "EX", 86400);
     }
 
     const suggestionsWithLines = attachLineNumbersToSuggestions(
@@ -461,7 +461,7 @@ ${JSON.stringify(prData, null, 2)}
             suggestions: inlineSuggestions,
           });
 
-          await redis.set(inlineCacheKey, "true");
+          await redis.set(inlineCacheKey, "true", "EX", 86400);
         } catch (err) {
           console.error(
             "❌ Failed to add inline comments:",
@@ -491,36 +491,37 @@ ${JSON.stringify(prData, null, 2)}
             : "PR blocked by MergeMind quality gate",
       });
 
-      await redis.set(statusCacheKey, "true");
+      await redis.set(statusCacheKey, "true", "EX", 86400);
     }
 
     pull.healthScore = parsed.healthScore;
     await pull.save();
 
-    const pulls = await Pull.find({ repo: repo._id });
-    const analyzed = pulls.filter((p) => p.healthScore !== undefined);
-    const avgHealthScore =
-      analyzed.length > 0
-        ? analyzed.reduce((sum, p) => sum + p.healthScore, 0) / analyzed.length
-        : 0;
+    // const pulls = await Pull.find({ repo: repo._id });
+    // const analyzed = pulls.filter((p) => p.healthScore !== undefined);
+    // const avgHealthScore =
+    //   analyzed.length > 0
+    //     ? analyzed.reduce((sum, p) => sum + p.healthScore, 0) / analyzed.length
+    //     : 0;
 
-    repo.stats = {
-      totalPRs: pulls.length,
-      totalAnalyzedPRs: analyzed.length,
-      openPRs: pulls.filter((p) => p.state === "open").length,
-      averageHealthScore: Math.round(avgHealthScore),
-    };
-    await repo.save();
+    // repo.stats = {
+    //   totalPRs: pulls.length,
+    //   totalAnalyzedPRs: analyzed.length,
+    //   openPRs: pulls.filter((p) => p.state === "open").length,
+    //   averageHealthScore: Math.round(avgHealthScore),
+    // };
+    // await repo.save();
 
     const prCacheKey = `repo:${repoId}:pr:${prNumber}`;
     const prsListKey = `repo:${repoId}:prs`;
     const userDashboardKey = `user:${repo.user._id}:dashboardStats`;
 
+    const pulls = await Pull.find({ repo: repo._id }).sort({ createdAt: -1 });
     await Promise.all([
       redis.setex(prCacheKey, 300, JSON.stringify(pull)),
       redis.setex(prsListKey, 300, JSON.stringify(pulls)),
       redis.del(userDashboardKey),
-      redis.set(commitCacheKey, latestCommit),
+      redis.set(commitCacheKey, latestCommit, "EX", 86400),
     ]);
 
     console.log(

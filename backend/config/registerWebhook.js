@@ -1,46 +1,46 @@
-const axios = require("axios");
+  const axios = require("axios");
 
-const registerWebhook = async (repoFullName, accessToken) => {
-  try {
-    
-    const { data: existingHooks } = await axios.get(
-      `https://api.github.com/repos/${repoFullName}/hooks`,
-      { headers: { Authorization: `token ${accessToken}` } }
-    );
+  const registerWebhook = async (repoFullName, accessToken) => {
+    try {
+      
+      const { data: existingHooks } = await axios.get(
+        `https://api.github.com/repos/${repoFullName}/hooks`,
+        { headers: { Authorization: `token ${accessToken}` } }
+      );
 
-    const webhookExists = existingHooks.some(
-      (hook) => hook.config.url === `${process.env.BACKEND_URL}/webhooks/github`
-    );
+      const webhookExists = existingHooks.some(
+        (hook) => hook.config.url === `${process.env.BACKEND_URL}/api/webhooks/github`
+      );
 
-    if (webhookExists) {
-      console.log(`✅ Webhook already exists`);
-      return;
-    }
+      if (webhookExists) {
+        console.log(`✅ Webhook already exists`);
+        return;
+      }
 
-    await axios.post(
-      `https://api.github.com/repos/${repoFullName}/hooks`,
-      {
-        name: "web",
-        active: true,
-        events: ["push", "pull_request", "repository", "star", "fork"],
-        config: {
-          url: `${process.env.BACKEND_URL}/api/webhooks/github`,
-          content_type: "json",
-          secret: process.env.GITHUB_WEBHOOK_SECRET,
+      await axios.post(
+        `https://api.github.com/repos/${repoFullName}/hooks`,
+        {
+          name: "web",
+          active: true,
+          events: ["push", "pull_request", "repository", "star", "fork"],
+          config: {
+            url: `${process.env.BACKEND_URL}/api/webhooks/github`,
+            content_type: "json",
+            secret: process.env.GITHUB_WEBHOOK_SECRET,
+          },
         },
-      },
-      { headers: { Authorization: `token ${accessToken}` } }
-    );
+        { headers: { Authorization: `token ${accessToken}` } }
+      );
 
-    console.log(`✅ Webhook created`);
-  } catch (err) {
-    console.log(
-      `❌ Failed to add webhook`,
-      err.response?.data || err.message
-    );
-  }
-};
+      console.log(`✅ Webhook created`);
+    } catch (err) {
+      console.log(
+        `❌ Failed to add webhook`,
+        err.response?.data || err.message
+      );
+    }
+  };
 
-module.exports = {
-  registerWebhook,
-};
+  module.exports = {
+    registerWebhook,
+  };

@@ -24,7 +24,7 @@ const getDashboardStats = async (req, res) => {
     const repoIds = await Repo.find({ user: userId }).distinct("_id");
 
     const prsAnalyzedThisWeek = await PRAnalysis.countDocuments({
-      analyzedAt: { $gte: oneWeekAgo.toISOString() },
+      analyzedAt: { $gte: oneWeekAgo },
       repo: { $in: repoIds },
     });
 
@@ -37,7 +37,7 @@ const getDashboardStats = async (req, res) => {
 
     const activeRepos = await Repo.countDocuments({
       user: userId,
-      lastPrActivity: { $gte: oneWeekAgo.toISOString() },
+      lastPrActivity: { $gte: oneWeekAgo },
     });
 
     const stats = {

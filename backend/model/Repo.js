@@ -46,11 +46,11 @@ const repoSchema = new mongoose.Schema(
       default: 0,
     },
     lastPushedAt: {
-      type: String,
-      default: formatToReadable(new Date()),
+      type: Date,
+      default: Date.now,
     },
     lastPrActivity: {
-      type: String,
+      type: Date,
     },
     lastPushedBy: {
       username: { type: String },
@@ -92,6 +92,9 @@ repoSchema.pre(
     }
   }
 );
+
+repoSchema.index({ user: 1 });
+repoSchema.index({ githubId: 1 });
 
 const Repo = mongoose.model("Repo", repoSchema);
 
